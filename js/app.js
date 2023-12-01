@@ -147,14 +147,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let { data: users } = await axios.get("/users");
 
+    let currentUser = user;
+
     let filteredUsers = users.filter(
       (user) =>
-        user.phone.includes(searchedStr) || user.fullName.includes(searchedStr)
+        user.id !== currentUser.id &&
+        (user.phone.includes(searchedStr) ||
+          user.fullName.toLowerCase().includes(searchedStr.toLowerCase()))
     );
     main.innerHTML = "";
     [...ul.children].forEach((child) => child.remove());
     main.append(ul);
-    console.log(filteredUsers, searchedStr);
     filteredUsers.forEach(renderUser);
   });
 });
