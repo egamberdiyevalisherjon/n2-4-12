@@ -28,7 +28,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   let fullName = document.querySelector("#fullName");
   let phoneNumber = document.querySelector("#phoneNumber");
   let logoutBtn = document.querySelector("#logoutBtn");
+  let searchInput = document.querySelector("#searchInput");
   let main = document.querySelector("main");
+  let ul = document.createElement("ul");
+
+  ul.classList.add(
+    ..."grid gap-2 [&_li]:border-rose-900 [&_li:not(:first-child)]:border-t [&_li]:pt-2".split(
+      " "
+    )
+  );
 
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("user-id");
@@ -52,6 +60,58 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   chats = chats.filter((chat) => chat.members.includes(user.id));
 
+  const renderUser = async (user) => {
+    let li = document.createElement("li");
+    li.classList.add(
+      "flex",
+      "items-center",
+      "gap-2",
+      "cursor-pointer",
+      "relative"
+    );
+    li.setAttribute("data-user-id", user.id);
+
+    li.innerHTML = `
+        <div
+          class="w-16 h-16 bg-rose-200 rounded-full grid place-items-center text-rose-900 text-2xl"
+        >
+          ${user.fullName[0]}
+        </div>
+        <h3 class="text-2xl">${user.fullName}</h3>
+        <span class="absolute top-6 end-6 bg-blue-200 text-blue-900 border border-blue-900 rounded-lg py-2 px-4">New Chat</span>
+      `;
+
+    ul.append(li);
+
+    li.addEventListener("click", () => {
+      window.location.replace(`/pages/chat.html?userId=${user.id}`);
+    });
+  };
+
+  const renderChat = async (chat) => {
+    let friendId = chat.members.find((memberId) => memberId !== user.id);
+    let { data: friend } = await axios.get(`/users/${friendId}`);
+
+    let li = document.createElement("li");
+    li.classList.add("flex", "items-center", "gap-2", "cursor-pointer");
+    li.setAttribute("data-chat-id", chat.id);
+
+    li.innerHTML = `
+        <div
+          class="w-16 h-16 bg-rose-200 rounded-full grid place-items-center text-rose-900 text-2xl"
+        >
+          ${friend.fullName[0]}
+        </div>
+        <h3 class="text-2xl">${friend.fullName}</h3>
+      `;
+
+    ul.append(li);
+
+    li.addEventListener("click", () => {
+      window.location.replace(`/pages/chat.html?chatId=${chat.id}`);
+    });
+  };
+
   if (chats.length === 0) {
     let h2 = document.createElement("h2");
     h2.classList.add("text-4xl", "text-blue-600", "text-center");
@@ -61,37 +121,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     main.append(h2);
   } else {
-    let ul = document.createElement("ul");
-
-    ul.classList.add(
-      ..."grid gap-2 [&_li]:border-rose-900 [&_li:not(:first-child)]:border-t [&_li]:pt-2".split(
-        " "
-      )
-    );
-
     main.append(ul);
-    chats.forEach(async (chat) => {
-      let friendId = chat.members.find((memberId) => memberId !== user.id);
-      let { data: friend } = await axios.get(`/users/${friendId}`);
-
-      let li = document.createElement("li");
-      li.classList.add("flex", "items-center", "gap-2", "cursor-pointer");
-      li.setAttribute("data-chat-id", chat.id);
-
-      li.innerHTML = `
-        <div
-          class="w-16 h-16 bg-rose-200 rounded-full grid place-items-center text-rose-900 text-2xl"
-        >
-          ${friend.fullName[0]}
-        </div>
-        <h3 class="text-2xl">${friend.fullName}</h3>
-      `;
-
-      ul.append(li);
-
-      li.addEventListener("click", () => {
-        window.location.replace(`/pages/chat.html?chatId=${chat.id}`);
-      });
-    });
+    chats.forEach(renderChat);
   }
+
+  searchInput.addEventListener("keyup", async () => {
+    let searchedStr = searchInput.value;
+    if (!searchedStr) {
+      main.innerHTML = "";
+      if (chats.length === 0) {
+        let h2 = document.createElement("h2");
+        h2.classList.add("text-4xl", "text-blue-600", "text-center");
+
+        h2.innerText =
+          "You haven't started any chat with anyone yet. \nLooks like you are from MOON 😇";
+
+        main.append(h2);
+      } else {
+        [...ul.children].forEach((child) => child.remove());
+        main.append(ul);
+        chats.forEach(renderChat);
+      }
+      return;
+    }
+
+    let { data: users } = await axios.get("/users");
+
+    let filteredUsers = users.filter(
+      (user) =>
+        user.phone.includes(searchedStr) || user.fullName.includes(searchedStr)
+    );
+    main.innerHTML = "";
+    [...ul.children].forEach((child) => child.remove());
+    main.append(ul);
+    console.log(filteredUsers, searchedStr);
+    filteredUsers.forEach(renderUser);
+  });
 });
